@@ -34,7 +34,9 @@ class _MyAppState extends State<MyApp> {
               // ================= PHẦN 1: MÁY QUÉT CỨNG PDA (EVENT CHANNEL) =================
               Card(
                 elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -45,7 +47,10 @@ class _MyAppState extends State<MyApp> {
                           SizedBox(width: 8),
                           Text(
                             '1. Máy quét phần cứng (PDA)',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -57,22 +62,32 @@ class _MyAppState extends State<MyApp> {
                             return Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.green.withOpacity(0.1),
+                                color: Colors.green.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 'Mã PDA: ${snapshot.data}',
-                                style: const TextStyle(fontSize: 20, color: Colors.green, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold,
+                                ),
                                 textAlign: TextAlign.center,
                               ),
                             );
                           }
                           if (snapshot.hasError) {
-                            return Text('Lỗi: ${snapshot.error}', style: const TextStyle(color: Colors.red));
+                            return Text(
+                              'Lỗi: ${snapshot.error}',
+                              style: const TextStyle(color: Colors.red),
+                            );
                           }
                           return const Text(
                             'Đang chờ bạn bấm nút quét cứng trên máy...',
-                            style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontStyle: FontStyle.italic,
+                            ),
                           );
                         },
                       ),
@@ -85,7 +100,9 @@ class _MyAppState extends State<MyApp> {
 
               Card(
                 elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -96,7 +113,10 @@ class _MyAppState extends State<MyApp> {
                           SizedBox(width: 8),
                           Text(
                             '2. Máy quét bằng Camera phone',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -105,7 +125,9 @@ class _MyAppState extends State<MyApp> {
                         'Kết quả Cam: $_cameraScanResult',
                         style: TextStyle(
                           fontSize: 20,
-                          color: _cameraScanResult == 'Chưa quét mã nào' || _cameraScanResult == 'Người dùng hủy quét'
+                          color:
+                              _cameraScanResult == 'Chưa quét mã nào' ||
+                                  _cameraScanResult == 'Người dùng hủy quét'
                               ? Colors.grey
                               : Colors.blue,
                           fontWeight: FontWeight.bold,
@@ -116,7 +138,8 @@ class _MyAppState extends State<MyApp> {
                       ElevatedButton.icon(
                         onPressed: () async {
                           // Gọi hàm mở Activity quét bằng cameraX + ML Kit từ Native Kotlin
-                          final result = await _barcodeScannerPlugin.startCameraScan();
+                          final result = await _barcodeScannerPlugin
+                              .startCameraScan();
 
                           setState(() {
                             if (result != null && result.isNotEmpty) {
@@ -131,8 +154,13 @@ class _MyAppState extends State<MyApp> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blueAccent,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 24,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                     ],
