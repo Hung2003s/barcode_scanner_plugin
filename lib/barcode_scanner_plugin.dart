@@ -10,4 +10,9 @@ class BarcodeScannerPlugin {
   Stream<String> get barcodeStream {
     return BarcodeScannerPluginPlatform.instance.barcodeStream;
   }
+
+
+  Future<String?> startCameraScan() {
+    return BarcodeScannerPluginPlatform.instance.startCameraScan();
+  }
 }

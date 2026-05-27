@@ -1,12 +1,14 @@
 # barcode_scanner_plugin
 
-A Flutter plugin for PDA hardware barcode scanners. This plugin uses `EventChannel` to provide a real-time stream of barcode data, making it easy to integrate with your Flutter application using `StreamBuilder` or standard stream listeners.
+A powerful Flutter plugin for barcode scanning, supporting both **dedicated PDA hardware scanners** (via Android Broadcast Intents) and **smartphone cameras** (via Google ML Kit).
 
 ## Features
 
-*   **Real-time Scanning**: Receive barcode data immediately when the hardware button is pressed.
-*   **Stream-based API**: Simple `barcodeStream` to handle incoming data.
-*   **Easy Integration**: Designed specifically for Android PDA devices with integrated scanners.
+*   **Dual-Mode Scanning**: 
+    *   **Hardware PDA**: Real-time stream from integrated scanners (Zebra, Honeywell, Sunmi, etc.) using `EventChannel`.
+    *   **Camera Scan**: High-performance camera scanning using **CameraX** and **Google ML Kit** for regular smartphones.
+*   **Stream-based API**: Simple `barcodeStream` for background hardware scanning.
+*   **Easy Integration**: Optimized for Android handheld terminals and mobile devices.
 
 ## Installation
 
@@ -16,10 +18,8 @@ Add `barcode_scanner_plugin` to your `pubspec.yaml` file:
 dependencies:
   barcode_scanner_plugin:
     git:
-      url: https://github.com/your-username/barcode_scanner_plugin.git
+      url: https://github.com/pda_scanner_lmhung/barcode_scanner_plugin.git
 ```
-
-*(Note: Replace with your actual repository URL or local path)*
 
 ## Usage
 
@@ -35,39 +35,48 @@ import 'package:barcode_scanner_plugin/barcode_scanner_plugin.dart';
 final _barcodeScanner = BarcodeScannerPlugin();
 ```
 
-### 3. Listen to scanned barcodes
+### 3. Hardware PDA Scanning (Background Stream)
 
-You can use a `StreamBuilder` for a reactive UI:
+Ideal for devices with a physical scan button. It listens for Broadcast Intents in the background.
 
 ```dart
 StreamBuilder<String>(
   stream: _barcodeScanner.barcodeStream,
   builder: (context, snapshot) {
     if (snapshot.hasData) {
-      return Text('Scanned Code: ${snapshot.data}');
+      return Text('PDA Scanned: ${snapshot.data}');
     }
-    return Text('Waiting for scan...');
+    return Text('Waiting for hardware scan...');
   },
 )
 ```
 
-Or listen to the stream manually:
+### 4. Camera Scanning (Interactive)
+
+Use this for devices without a hardware scanner or as a fallback. It opens a camera preview.
 
 ```dart
-_barcodeScanner.barcodeStream.listen((barcode) {
-  print('Scanned: $barcode');
-});
+final result = await _barcodeScanner.startCameraScan();
+if (result != null) {
+  print('Camera Scanned: $result');
+}
 ```
 
-### 4. Get Platform Version
+## Android Configuration
 
-```dart
-String? version = await _barcodeScanner.getPlatformVersion();
+### Permissions
+The plugin requires Camera permission for the camera scanning feature. Add this to your `AndroidManifest.xml`:
+
+```xml
+<uses-permission android:name="android.permission.CAMERA" />
 ```
+
+### Hardware Scanner Setup
+Ensure your PDA device is configured to send **Broadcast Intents**. Common settings:
+*   **Action**: `com.pda.scan.ACTION` (or similar, depending on your device vendor)
+*   **Data Key**: Usually `data` or `value`.
 
 ## Example
-
-Check the `example` folder for a complete implementation.
 
 ```dart
 import 'package:flutter/material.dart';
@@ -75,43 +84,39 @@ import 'package:barcode_scanner_plugin/barcode_scanner_plugin.dart';
 
 void main() => runApp(const MyApp());
 
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
 class _MyAppState extends State<MyApp> {
   final _plugin = BarcodeScannerPlugin();
+  String _camResult = 'None';
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(title: const Text('Barcode Scanner Example')),
-        body: Center(
-          child: StreamBuilder<String>(
+    return Scaffold(
+      appBar: AppBar(title: const Text('Dual Barcode Scanner')),
+      body: Column(
+        children: [
+          // Hardware Scanner Listener
+          StreamBuilder<String>(
             stream: _plugin.barcodeStream,
-            builder: (context, snapshot) {
-              return Text(
-                snapshot.hasData 
-                    ? 'Result: ${snapshot.data}' 
-                    : 'Scan something!',
-                style: const TextStyle(fontSize: 20),
-              );
-            },
+            builder: (context, snapshot) => Text('PDA: ${snapshot.data ?? "Waiting..."}'),
           ),
-        ),
+          
+          const Divider(),
+          
+          // Camera Scanner Button
+          Text('Camera: $_camResult'),
+          ElevatedButton(
+            onPressed: () async {
+              final code = await _plugin.startCameraScan();
+              if (code != null) setState(() => _camResult = code);
+            },
+            child: const Text('Open Camera Scanner'),
+          ),
+        ],
       ),
     );
   }
 }
 ```
-
-## Permissions
-
-Ensure your Android PDA device has the necessary permissions and the scanning service is enabled in the device settings.
 
 ## License
 

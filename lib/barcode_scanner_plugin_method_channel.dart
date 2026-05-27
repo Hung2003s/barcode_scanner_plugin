@@ -29,4 +29,11 @@ class MethodChannelBarcodeScannerPlugin extends BarcodeScannerPluginPlatform {
     _barcodeStream ??= eventChannel.receiveBroadcastStream().cast<String>();
     return _barcodeStream!;
   }
+
+  @override
+  Future<String?> startCameraScan() async {
+    // Gửi lệnh 'startCameraScan' xuống Kotlin và chờ kết quả trả về
+    final barcode = await methodChannel.invokeMethod<String>('startCameraScan');
+    return barcode;
+  }
 }

@@ -1,6 +1,6 @@
 name: barcode_scanner_plugin
-description: "A federated Flutter plugin to scan barcodes from hardware PDA devices via Android Broadcast Intents and EventChannel stream."
-version: 0.0.1
+description: "A powerful Flutter plugin for dual-mode barcode scanning. Supports dedicated PDA hardware via Broadcast Intents and smartphone cameras using CameraX and Google ML Kit."
+version: 0.1.0
 homepage:
 repository: https://github.com/pda_scanner_lmhung/barcode_scanner_plugin
 environment:
@@ -24,4 +24,3 @@ flutter:
         pluginClass: BarcodeScannerPlugin
       ios:
         pluginClass: BarcodeScannerPlugin
-

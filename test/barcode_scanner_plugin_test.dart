@@ -13,6 +13,12 @@ class MockBarcodeScannerPluginPlatform
   @override
   // TODO: implement barcodeStream
   Stream<String> get barcodeStream => throw UnimplementedError();
+
+  @override
+  Future<String?> startCameraScan() {
+    // TODO: implement startCameraScan
+    throw UnimplementedError();
+  }
 }
 
 void main() {

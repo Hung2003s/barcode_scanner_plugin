@@ -28,4 +28,8 @@ abstract class BarcodeScannerPluginPlatform extends PlatformInterface {
   Stream<String> get barcodeStream {
     throw UnimplementedError('barcodeStream has not been implemented.');
   }
+  /// Hàm gọi camera
+  Future<String?> startCameraScan() {
+    throw UnimplementedError('startCameraScan() has not been implemented.');
+  }
 }
