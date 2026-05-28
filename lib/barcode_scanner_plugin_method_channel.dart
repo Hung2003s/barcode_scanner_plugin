@@ -13,21 +13,12 @@ class MethodChannelBarcodeScannerPlugin extends BarcodeScannerPluginPlatform {
   final eventChannel = const EventChannel('barcode_scanner_plugin/events');
 
   @override
-  Future<String?> getPlatformVersion() async {
-    final version = await methodChannel.invokeMethod<String>(
-      'getPlatformVersion',
-    );
-    return version;
-  }
-
-  // Biến lưu trữ stream để tránh tạo mới liên tục mỗi khi gọi
-  Stream<String>? _barcodeStream;
-
-  @override
   Stream<String> get barcodeStream {
-    // Chuyển đổi dữ liệu từ Native sang chuỗi String
-    _barcodeStream ??= eventChannel.receiveBroadcastStream().cast<String>();
-    return _barcodeStream!;
+    // Tạo mới BroadcastStream mỗi khi getter được gọi.
+    // EventChannel đảm bảo chỉ có một subscription thực tế đến Native,
+    // giúp tránh lỗi "Stream already subscribed"
+    // khi widget rebuild hoặc multiple listeners đăng ký.
+    return eventChannel.receiveBroadcastStream().cast<String>();
   }
 
   @override

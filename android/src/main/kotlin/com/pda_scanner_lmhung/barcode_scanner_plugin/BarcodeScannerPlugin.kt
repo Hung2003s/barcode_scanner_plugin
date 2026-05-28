@@ -14,41 +14,45 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
 
 class BarcodeScannerPlugin: FlutterPlugin, MethodChannel.MethodCallHandler, EventChannel.StreamHandler, ActivityAware, PluginRegistry.ActivityResultListener {
-    private lateinit var methodChannel: MethodChannel
-    private lateinit var eventChannel: EventChannel
+    // ---- Channels giao tiếp với Flutter ----
+    private lateinit var methodChannel: MethodChannel   // Gửi lệnh (Call/Response)
+    private lateinit var eventChannel: EventChannel     // Luồng dữ liệu (Stream)
 
-    private var eventSink: EventChannel.EventSink? = null
-    private var context: Context? = null
-    private var activity: Activity? = null
-    private var pendingResult: MethodChannel.Result? = null
-    private var barcodeReceiver: BroadcastReceiver? = null
+    // ---- State nội bộ ----
+    private var eventSink: EventChannel.EventSink? = null      // Gửi dữ liệu stream lên Flutter
+    private var context: Context? = null                        // Application context
+    private var activity: Activity? = null                      // Activity hiện tại
+    private var pendingResult: MethodChannel.Result? = null     // Callback kết quả camera scan
+    private var barcodeReceiver: BroadcastReceiver? = null       // Lắng nghe broadcast từ PDA
 
-    private val RC_CAMERA_SCAN = 1234
+    private val RC_CAMERA_SCAN = 1234    // RequestCode cho startActivityForResult camera
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         context = flutterPluginBinding.applicationContext
 
-        // 1. Cấu hình MethodChannel
+        // 1. Khởi tạo MethodChannel: dùng để Flutter gọi xuống Native (call/invoke)
         methodChannel = MethodChannel(flutterPluginBinding.binaryMessenger, "barcode_scanner_plugin")
         methodChannel.setMethodCallHandler(this)
 
-        // 2. Cấu hình EventChannel
+        // 2. Khởi tạo EventChannel: dùng để Native gửi dữ liệu stream (barcode) lên Flutter
         eventChannel = EventChannel(flutterPluginBinding.binaryMessenger, "barcode_scanner_plugin/events")
         eventChannel.setStreamHandler(this)
     }
 
-    // Xử lý các lệnh từ Flutter gửi xuống
+    /**
+     * Xử lý các lệnh gọi từ Flutter qua MethodChannel.
+     *
+     * Các method được hỗ trợ:
+     * - "startCameraScan": Mở màn hình camera quét mã vạch, trả về kết quả qua callback.
+     */
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
-            "getPlatformVersion" -> {
-                result.success("Android ${android.os.Build.VERSION.RELEASE}")
-            }
             "startCameraScan" -> {
-                // Lưu lại kết quả để trả về sau khi quét xong qua Camera
+                // Lưu callback kết quả để trả về sau khi CameraScanActivity kết thúc
                 this.pendingResult = result
 
                 if (activity != null) {
-                    // Mở màn hình quét Camera độc lập
+                    // Mở Activity quét camera độc lập, đợi kết quả qua onActivityResult
                     val intent = Intent(activity, CameraScanActivity::class.java)
                     activity?.startActivityForResult(intent, RC_CAMERA_SCAN)
                 } else {
@@ -56,19 +60,24 @@ class BarcodeScannerPlugin: FlutterPlugin, MethodChannel.MethodCallHandler, Even
                 }
             }
             else -> {
+                // Method chưa được hỗ trợ
                 result.notImplemented()
             }
         }
     }
 
-    // Hứng dữ liệu mã vạch trả về từ CameraScanActivity khi nó đóng (finish)
+    /**
+     * Nhận kết quả trả về từ CameraScanActivity khi người dùng quét xong hoặc hủy.
+     * - RESULT_OK: Trả mã vạch về Flutter qua pendingResult.
+     * - Khác: Trả null (người dùng hủy/quét thất bại).
+     */
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
         if (requestCode == RC_CAMERA_SCAN) {
             if (resultCode == Activity.RESULT_OK) {
                 val barcode = data?.getStringExtra("SCAN_RESULT")
-                pendingResult?.success(barcode) // Trả mã vạch về cho Flutter qua MethodChannel
+                pendingResult?.success(barcode)
             } else {
-                pendingResult?.success(null) // Người dùng bấm back hoặc hủy quét
+                pendingResult?.success(null) // Người dùng bấm Back hoặc hủy
             }
             pendingResult = null
             return true
@@ -76,14 +85,16 @@ class BarcodeScannerPlugin: FlutterPlugin, MethodChannel.MethodCallHandler, Even
         return false
     }
 
-    // --- Triển khai các hàm của ActivityAware để lắng nghe vòng đời ứng dụng ---
+    // ==================== ActivityAware ====================
+    // Lắng nghe vòng đời Activity để có thể startActivityForResult đúng cách.
+
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         activity = binding.activity
-        binding.addActivityResultListener(this) // Đăng ký bộ lắng nghe kết quả Activity
+        binding.addActivityResultListener(this) // Đăng ký lắng nghe kết quả từ CameraScanActivity
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
-        activity = null
+        activity = null // Activity cũ bị hủy do xoay màn hình
     }
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
@@ -95,17 +106,31 @@ class BarcodeScannerPlugin: FlutterPlugin, MethodChannel.MethodCallHandler, Even
         activity = null
     }
 
-    // --- Triển khai StreamHandler phục vụ máy quét phần cứng (Broadcast) ---
+    // ==================== StreamHandler (PDA Hardware Scanner) ====================
+
+    /**
+     * Khi Flutter bắt đầu lắng nghe stream (barcodeStream).
+     * Đăng ký BroadcastReceiver để nhận intent từ máy quét PDA.
+     */
     override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
         eventSink = events
         registerBarcodeReceiver()
     }
 
+    /**
+     * Khi Flutter hủy lắng nghe stream.
+     * Hủy đăng ký BroadcastReceiver để tránh rò rỉ bộ nhớ.
+     */
     override fun onCancel(arguments: Any?) {
         unregisterBarcodeReceiver()
         eventSink = null
     }
 
+    /**
+     * Đăng ký BroadcastReceiver lắng nghe intent từ máy quét PDA.
+     * Action: "com.barcode.action", Extra key: "data_string".
+     * Khi có mã vạch, gửi lên Flutter qua EventSink.
+     */
     private fun registerBarcodeReceiver() {
         if (context == null || eventSink == null) return
 
@@ -113,7 +138,7 @@ class BarcodeScannerPlugin: FlutterPlugin, MethodChannel.MethodCallHandler, Even
             override fun onReceive(context: Context?, intent: Intent?) {
                 val barcode = intent?.getStringExtra("data_string")
                 if (barcode != null) {
-                    eventSink?.success(barcode)
+                    eventSink?.success(barcode) // Gửi mã vạch lên Flutter qua EventChannel
                 }
             }
         }
@@ -122,16 +147,21 @@ class BarcodeScannerPlugin: FlutterPlugin, MethodChannel.MethodCallHandler, Even
         context?.registerReceiver(barcodeReceiver, filter)
     }
 
+    /**
+     * Hủy đăng ký BroadcastReceiver để tránh rò rỉ bộ nhớ.
+     * Xử lý exception an toàn phòng trường hợp receiver chưa được đăng ký.
+     */
     private fun unregisterBarcodeReceiver() {
         try {
             context?.unregisterReceiver(barcodeReceiver)
         } catch (e: Exception) {
-            // Hờ hờ, không làm gì cả nếu receiver chưa đăng ký
+            // Không làm gì nếu receiver chưa được đăng ký
         }
         barcodeReceiver = null
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        // Dọn dẹp tài nguyên khi plugin bị tách khỏi engine
         methodChannel.setMethodCallHandler(null)
         eventChannel.setStreamHandler(null)
         context = null

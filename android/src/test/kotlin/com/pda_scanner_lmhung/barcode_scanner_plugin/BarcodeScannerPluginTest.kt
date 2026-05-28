@@ -15,13 +15,13 @@ import kotlin.test.Test
 
 internal class BarcodeScannerPluginTest {
     @Test
-    fun onMethodCall_getPlatformVersion_returnsExpectedValue() {
+    fun onMethodCall_startCameraScan_returnsNotImplementedWhenNoActivity() {
         val plugin = BarcodeScannerPlugin()
 
-        val call = MethodCall("getPlatformVersion", null)
+        val call = MethodCall("startCameraScan", null)
         val mockResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
         plugin.onMethodCall(call, mockResult)
 
-        Mockito.verify(mockResult).success("Android " + android.os.Build.VERSION.RELEASE)
+        Mockito.verify(mockResult).error("NO_ACTIVITY", "Plugin không tìm thấy Activity hiện tại để khởi chạy Camera", null)
     }
 }

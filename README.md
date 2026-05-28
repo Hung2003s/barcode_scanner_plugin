@@ -18,7 +18,7 @@ Add `barcode_scanner_plugin` to your `pubspec.yaml` file:
 dependencies:
   barcode_scanner_plugin:
     git:
-      url: https://github.com/pda_scanner_lmhung/barcode_scanner_plugin.git
+      url: https://github.com/Hung2003s/barcode_scanner_plugin.git
 ```
 
 ## Usage

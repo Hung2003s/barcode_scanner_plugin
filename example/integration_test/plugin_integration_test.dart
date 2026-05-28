@@ -14,11 +14,9 @@ import 'package:barcode_scanner_plugin/barcode_scanner_plugin.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('getPlatformVersion test', (WidgetTester tester) async {
+  // Integration test có thể mở rộng để kiểm tra camera scan và hardware scan
+  testWidgets('Plugin khởi tạo thành công', (WidgetTester tester) async {
     final BarcodeScannerPlugin plugin = BarcodeScannerPlugin();
-    final String? version = await plugin.getPlatformVersion();
-    // The version string depends on the host platform running the test, so
-    // just assert that some non-empty string is returned.
-    expect(version?.isNotEmpty, true);
+    expect(plugin, isNotNull);
   });
 }

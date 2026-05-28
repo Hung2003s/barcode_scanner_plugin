@@ -8,9 +8,6 @@ class MockBarcodeScannerPluginPlatform
     with MockPlatformInterfaceMixin
     implements BarcodeScannerPluginPlatform {
   @override
-  Future<String?> getPlatformVersion() => Future.value('42');
-
-  @override
   // TODO: implement barcodeStream
   Stream<String> get barcodeStream => throw UnimplementedError();
 
@@ -27,14 +24,5 @@ void main() {
 
   test('$MethodChannelBarcodeScannerPlugin is the default instance', () {
     expect(initialPlatform, isInstanceOf<MethodChannelBarcodeScannerPlugin>());
-  });
-
-  test('getPlatformVersion', () async {
-    BarcodeScannerPlugin barcodeScannerPlugin = BarcodeScannerPlugin();
-    MockBarcodeScannerPluginPlatform fakePlatform =
-        MockBarcodeScannerPluginPlatform();
-    BarcodeScannerPluginPlatform.instance = fakePlatform;
-
-    expect(await barcodeScannerPlugin.getPlatformVersion(), '42');
   });
 }

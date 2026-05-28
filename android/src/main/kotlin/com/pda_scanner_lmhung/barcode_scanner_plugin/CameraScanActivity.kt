@@ -21,26 +21,34 @@ import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
+/**
+ * Activity quét mã vạch qua Camera sử dụng CameraX + Google ML Kit.
+ *
+ * Được khởi chạy từ BarcodeScannerPlugin.startCameraScan().
+ * Khi quét thành công, trả kết quả về qua Intent extra "SCAN_RESULT"
+ * và đóng Activity (finish) để quay lại Flutter.
+ */
 class CameraScanActivity : FragmentActivity() {
-    private lateinit var cameraExecutor: ExecutorService
-    private lateinit var previewView: PreviewView
+    private lateinit var cameraExecutor: ExecutorService   // Thread riêng xử lý phân tích ảnh
+    private lateinit var previewView: PreviewView           // View hiển thị preview camera
 
     private val REQUEST_CODE_PERMISSIONS = 101
     private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
-    private var isScanning = true
+    private var isScanning = true   // Cờ khóa: tránh gửi kết quả nhiều lần khi quét liên tục
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Khởi tạo PreviewView bằng code giúp plugin gọn nhẹ, không cần file XML layout
+        // Tạo PreviewView bằng code (không cần file XML layout) để plugin gọn nhẹ
         previewView = PreviewView(this).apply {
             implementationMode = PreviewView.ImplementationMode.COMPATIBLE
         }
         setContentView(previewView)
 
+        // Thread riêng biệt để phân tích khung hình camera mà không chặn UI
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        // Kiểm tra và xin quyền truy cập Camera
+        // Kiểm tra và xin quyền Camera trước khi khởi động
         if (allPermissionsGranted()) {
             startCamera()
         } else {
@@ -48,41 +56,49 @@ class CameraScanActivity : FragmentActivity() {
         }
     }
 
+    /**
+     * Khởi tạo CameraX:
+     * - Preview: Hiển thị hình ảnh camera lên PreviewView.
+     * - ImageAnalysis: Phân tích từng khung hình để tìm mã vạch qua ML Kit.
+     * - CameraSelector: Sử dụng camera sau (DEFAULT_BACK_CAMERA).
+     */
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
         cameraProviderFuture.addListener({
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
 
-            // Cấu hình luồng hiển thị (Preview) lên màn hình
+            // 1. Cấu hình Preview: hiển thị camera lên màn hình
             val preview = Preview.Builder().build().also {
                 it.setSurfaceProvider(previewView.surfaceProvider)
             }
 
-            // Cấu hình luồng phân tích hình ảnh (Image Analysis) để quét mã vạch
+            // 2. Cấu hình ImageAnalysis: xử lý khung hình để phát hiện mã vạch
             val imageAnalyzer = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST) // Luôn xử lý khung hình mới nhất
                 .build()
                 .also {
                     it.setAnalyzer(cameraExecutor, BarcodeAnalyzer { barcode ->
+                        // Khi tìm thấy mã vạch, khóa trạng thái để không gửi kết quả nhiều lần
                         if (isScanning) {
-                            isScanning = false // Khóa trạng thái để không bắn kết quả liên tục
+                            isScanning = false
 
+                            // Đóng gói kết quả và gửi về BarcodeScannerPlugin
                             val intent = Intent().apply {
                                 putExtra("SCAN_RESULT", barcode)
                             }
                             setResult(Activity.RESULT_OK, intent)
-                            finish() // Đóng Activity và quay lại Flutter
+                            finish() // Đóng Activity, quay lại Flutter
                         }
                     })
                 }
 
-            // Mặc định luôn chọn Camera sau
+            // Luôn sử dụng camera sau
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
             try {
                 cameraProvider.unbindAll()
-                // Gắn luồng Camera vào Vòng đời (Lifecycle) của Activity
+                // Gắn Preview + ImageAnalyzer vào Lifecycle của Activity
                 cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer)
             } catch (exc: Exception) {
                 Toast.makeText(this, "Không thể khởi động camera: ${exc.message}", Toast.LENGTH_SHORT).show()
@@ -92,10 +108,12 @@ class CameraScanActivity : FragmentActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
+    /** Kiểm tra tất cả quyền cần thiết đã được cấp chưa */
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
     }
 
+    /** Xử lý kết quả sau khi người dùng cấp/từ chối quyền Camera */
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
@@ -108,40 +126,51 @@ class CameraScanActivity : FragmentActivity() {
         }
     }
 
+    /** Giải phóng thread pool khi Activity bị hủy */
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
     }
 
-    // Bộ phân tích hình ảnh kết hợp Google ML Kit
+    /**
+     * Bộ phân tích khung hình Camera sử dụng Google ML Kit Barcode Scanning.
+     *
+     * Nhận từng khung hình từ CameraX, chuyển đổi sang InputImage,
+     * và gửi đến ML Kit để nhận diện mã vạch. Khi phát hiện mã vạch,
+     * gọi callback onBarcodeDetected để trả kết quả về Activity.
+     */
     private class BarcodeAnalyzer(private val onBarcodeDetected: (String) -> Unit) : ImageAnalysis.Analyzer {
+        // Client ML Kit dùng để quét mã vạch (tái sử dụng cho tất cả khung hình)
         private val scanner = BarcodeScanning.getClient()
 
         @ExperimentalGetImage
         override fun analyze(imageProxy: ImageProxy) {
             val mediaImage = imageProxy.image
             if (mediaImage != null) {
-                // Chuyển đổi khung hình từ CameraX sang định dạng InputImage của ML Kit
+                // Chuyển đổi khung hình từ CameraX (ImageProxy) sang InputImage của ML Kit
                 val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
 
+                // Gửi đến ML Kit để nhận diện mã vạch
                 scanner.process(image)
                     .addOnSuccessListener { barcodes ->
                         for (barcode in barcodes) {
                             val rawValue = barcode.rawValue
                             if (rawValue != null) {
-                                onBarcodeDetected(rawValue)
-                                break
+                                onBarcodeDetected(rawValue) // Trả kết quả về Activity
+                                break // Chỉ lấy mã vạch đầu tiên tìm thấy
                             }
                         }
                     }
                     .addOnFailureListener {
-                        // Bỏ qua nếu khung hình hiện tại phân tích lỗi
+                        // Bỏ qua nếu khung hình hiện tại bị lỗi phân tích
                     }
                     .addOnCompleteListener {
-                        // Cực kỳ quan trọng: Phải đóng imageProxy để CameraX giải phóng bộ nhớ và gửi khung hình tiếp theo
+                        // QUAN TRỌNG: Phải đóng imageProxy để CameraX giải phóng bộ nhớ
+                        // và tiếp tục gửi khung hình mới. Nếu không đóng, camera sẽ bị treo.
                         imageProxy.close()
                     }
             } else {
+                // Khung hình null, vẫn phải đóng để giải phóng tài nguyên
                 imageProxy.close()
             }
         }

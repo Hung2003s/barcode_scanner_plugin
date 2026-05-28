@@ -11,14 +11,14 @@ import XCTest
 
 class RunnerTests: XCTestCase {
 
-  func testGetPlatformVersion() {
+  func testNotImplementedMethods() {
     let plugin = BarcodeScannerPlugin()
 
-    let call = FlutterMethodCall(methodName: "getPlatformVersion", arguments: [])
+    let call = FlutterMethodCall(methodName: "startCameraScan", arguments: [])
 
     let resultExpectation = expectation(description: "result block must be called.")
     plugin.handle(call) { result in
-      XCTAssertEqual(result as! String, "iOS " + UIDevice.current.systemVersion)
+      XCTAssertTrue(result is FlutterError)
       resultExpectation.fulfill()
     }
     waitForExpectations(timeout: 1)

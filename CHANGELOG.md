@@ -1,3 +1,10 @@
+## 0.1.2
+
+* **Improvement**: Removed cached stream variable in `barcodeStream` to avoid "Stream already subscribed" errors.
+* **Removed `getPlatformVersion()`**: Xóa method lấy phiên bản OS không cần thiết khỏi toàn bộ codebase (Dart, Kotlin, Swift, tests) để giữ API plugin tập trung vào quét mã vạch.
+* **Documentation**: Added comprehensive comments and KDoc documentation for all Dart, Kotlin, and Swift source files.
+* Updated `pubspec.yaml` repository URL and version.
+
 ## 0.1.1
 
 * **New Feature**: Added Camera Scanning support using CameraX and Google ML Kit.
