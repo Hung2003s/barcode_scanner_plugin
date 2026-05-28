@@ -1,7 +1,11 @@
+## 0.1.4
+
+* **Bugfix**: Added missing `import android.os.Build` and fixed syntax error in `registerBarcodeReceiver()` that caused build failure in v0.1.3.
+* `pubspec.yaml` version bump.
+
 ## 0.1.3
 
 * **Android 13+ Compatibility**: Added `RECEIVER_EXPORTED` flag when registering BroadcastReceiver on Android 13 (API 33) and above to comply with new runtime broadcast receiver restrictions.
-* `pubspec.yaml` version bump.
 
 ## 0.1.2
 

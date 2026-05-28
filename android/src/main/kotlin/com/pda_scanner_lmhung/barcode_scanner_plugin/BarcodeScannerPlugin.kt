@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -156,8 +157,7 @@ class BarcodeScannerPlugin: FlutterPlugin, MethodChannel.MethodCallHandler, Even
             // Đối với các dòng máy Android cũ hơn thì chạy lệnh tiêu chuẩn
             context?.registerReceiver(barcodeReceiver, filter)
         }
-
-    \}
+    }
 
     /**
      * Hủy đăng ký BroadcastReceiver để tránh rò rỉ bộ nhớ.
