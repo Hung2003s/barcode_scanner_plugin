@@ -138,14 +138,26 @@ class BarcodeScannerPlugin: FlutterPlugin, MethodChannel.MethodCallHandler, Even
             override fun onReceive(context: Context?, intent: Intent?) {
                 val barcode = intent?.getStringExtra("data_string")
                 if (barcode != null) {
-                    eventSink?.success(barcode) // Gửi mã vạch lên Flutter qua EventChannel
+                    eventSink?.success(barcode)
                 }
             }
         }
 
         val filter = IntentFilter("com.barcode.action")
-        context?.registerReceiver(barcodeReceiver, filter)
-    }
+
+        // Kiểm tra nếu thiết bị đang chạy Android 13 (API 33) hoặc Android 14 (API 34) trở lên
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context?.registerReceiver(
+                barcodeReceiver,
+                filter,
+                Context.RECEIVER_EXPORTED // Bắt buộc phải thêm cờ này cho Android mới
+            )
+        } else {
+            // Đối với các dòng máy Android cũ hơn thì chạy lệnh tiêu chuẩn
+            context?.registerReceiver(barcodeReceiver, filter)
+        }
+
+    \}
 
     /**
      * Hủy đăng ký BroadcastReceiver để tránh rò rỉ bộ nhớ.

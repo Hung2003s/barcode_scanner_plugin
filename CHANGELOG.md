@@ -1,3 +1,8 @@
+## 0.1.3
+
+* **Android 13+ Compatibility**: Added `RECEIVER_EXPORTED` flag when registering BroadcastReceiver on Android 13 (API 33) and above to comply with new runtime broadcast receiver restrictions.
+* `pubspec.yaml` version bump.
+
 ## 0.1.2
 
 * **Improvement**: Removed cached stream variable in `barcodeStream` to avoid "Stream already subscribed" errors.
