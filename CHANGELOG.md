@@ -1,3 +1,8 @@
+
+## 0.2.1
+
+* **Improvement**: Camera UI now provides interactive zoom control (0x–1x linear zoom) for better barcode detection at varying distances.
+
 ## 0.2.0
 
 * **Major UI Redesign**: Completely redesigned camera scan interface:
