@@ -4,14 +4,14 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'barcode_scanner_plugin'
-  s.version          = '0.0.1'
-  s.summary          = 'A new Flutter plugin project.'
+  s.version          = '0.1.5'
+  s.summary          = 'Flutter plugin for dual-mode barcode scanning with PDA hardware and camera support.'
   s.description      = <<-DESC
-A new Flutter plugin project.
+A powerful Flutter plugin for dual-mode barcode scanning. Supports dedicated PDA hardware via Broadcast Intents and smartphone cameras using CameraX and Google ML Kit.
                        DESC
-  s.homepage         = 'http://example.com'
+  s.homepage         = 'https://github.com/Hung2003s/barcode_scanner_plugin'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Your Company' => 'email@example.com' }
+  s.author           = { 'Hung2003s' => 'https://github.com/Hung2003s' }
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.dependency 'Flutter'

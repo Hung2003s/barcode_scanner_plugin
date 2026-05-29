@@ -1,3 +1,10 @@
+## 0.1.5
+
+* **New Feature**: Added Camera Frame (PreviewView) with fullscreen preview for barcode scanning.
+* **New Feature**: Added Zoom functionality via SeekBar slider and pinch-to-zoom gesture.
+* **Improvement**: Camera UI now provides interactive zoom control (0x–1x linear zoom) for better barcode detection at varying distances.
+* `pubspec.yaml` version bump and added pub.dev topics for discoverability.
+
 ## 0.1.4
 
 * **Bugfix**: Added missing `import android.os.Build` and fixed syntax error in `registerBarcodeReceiver()` that caused build failure in v0.1.3.
