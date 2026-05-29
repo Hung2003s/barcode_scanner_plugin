@@ -1,3 +1,30 @@
+
+## 0.2.2
+
+* **Improvement**: Update camera frame.
+
+## 0.2.1
+
+* **Improvement**: Camera UI now provides interactive zoom control (0x–1x linear zoom) for better barcode detection at varying distances.
+
+## 0.2.0
+
+* **Major UI Redesign**: Completely redesigned camera scan interface:
+    * **Transparent scan frame** with clipOutRect instead of PorterDuff CLEAR - camera preview shows through the frame area clearly.
+    * **Blue semi-transparent overlay** (#2196F3 at 53% alpha) around the frame for better visual focus.
+    * **Gradient blur/feather edges** using 4 LinearGradients + 4 RadialGradients for a soft transition between overlay and frame.
+    * **Touch zoom wheel** on the right side with visual track, green thumb indicator, and +/- buttons (replaces old SeekBar).
+    * **Lightning bolt flash icon** (yellow when on, white when off) with scale animation feedback.
+    * **Close button** with X icon drawable.
+* **Performance Optimization**:
+    * Zero allocations in `onDraw()` (all Paint objects pre-allocated as fields).
+    * `postInvalidateOnAnimation()` for vsync-aligned rendering instead of `invalidate()`.
+    * Reusable RectF and Path to avoid GC churn.
+    * Frame analysis throttled to 150ms interval to reduce CPU/battery usage.
+    * Scan line early-return optimization when outside visible area.
+* **Bilingual Documentation**: All Kotlin source files now have comprehensive comments in both English and Vietnamese.
+* **Example App Redesign**: Updated `example/lib/main.dart` with Material 3, loading states, and usage guide.
+
 ## 0.1.5
 
 * **New Feature**: Added Camera Frame (PreviewView) with fullscreen preview for barcode scanning.

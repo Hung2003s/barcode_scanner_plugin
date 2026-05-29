@@ -104,6 +104,20 @@ class CameraScanActivity : FragmentActivity() {
     private lateinit var zoomPlusBtn: View
 
     // ========================================================================
+    // Pre-allocated drawables (cached — no Bitmap creation per toggle)
+    // Drawable được cache sẵn — không tạo Bitmap mỗi lần bật/tắt
+    // ========================================================================
+
+    /** Cached flash drawable: OFF state / Drawable flash đã cache: trạng thái TẮT */
+    private var flashOffDrawable: android.graphics.drawable.Drawable? = null
+
+    /** Cached flash drawable: ON state / Drawable flash đã cache: trạng thái BẬT */
+    private var flashOnDrawable: android.graphics.drawable.Drawable? = null
+
+    /** Cached close (X) drawable / Drawable đóng (X) đã cache */
+    private var closeDrawable: android.graphics.drawable.Drawable? = null
+
+    // ========================================================================
     // State / Trạng thái
     // ========================================================================
 
@@ -125,25 +139,12 @@ class CameraScanActivity : FragmentActivity() {
     /** Scan line animation / Hoạt ảnh vạch quét */
     private var scanLineAnimator: ValueAnimator? = null
 
-    /** Last Y position for zoom wheel touch tracking */
-    private var lastWheelY = 0f
-
     // ========================================================================
     // Permissions / Quyền
     // ========================================================================
 
     private val REQUEST_CODE_PERMISSIONS = 101
     private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
-
-    /**
-     * Analysis interval in milliseconds.
-     * Throttles frame analysis to reduce CPU usage and battery drain.
-     * Only one frame every 150ms is analyzed by ML Kit.
-     *
-     * Khoảng cách giữa các frame phân tích (ms).
-     * Giới hạn tần suất phân tích để giảm CPU và pin.
-     */
-    private val ANALYSIS_INTERVAL_MS = 150L
 
     // ========================================================================
     // Activity Lifecycle / Vòng đời Activity
@@ -297,6 +298,11 @@ class CameraScanActivity : FragmentActivity() {
             setPadding(32, 0, 32, 0)
         }
 
+        // Pre-create cached drawables cho flash và close buttons
+        flashOffDrawable = createFlashDrawable(false)
+        flashOnDrawable = createFlashDrawable(true)
+        closeDrawable = createCloseDrawable()
+
         // Flash toggle button - lightning bolt icon
         // Nút bật/tắt flash - biểu tượng tia sét
         flashButton = ImageView(this).apply {
@@ -304,7 +310,7 @@ class CameraScanActivity : FragmentActivity() {
                 marginStart = 16
                 marginEnd = 16
             }
-            setImageDrawable(createFlashDrawable(false))
+            setImageDrawable(flashOffDrawable)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             contentDescription = "Flash"
             setOnClickListener { toggleFlash() }
@@ -324,7 +330,7 @@ class CameraScanActivity : FragmentActivity() {
                 marginStart = 16
                 marginEnd = 16
             }
-            setImageDrawable(createCloseDrawable())
+            setImageDrawable(closeDrawable)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             contentDescription = "Close"
             setOnClickListener { finishWithCancel() }
@@ -421,17 +427,41 @@ class CameraScanActivity : FragmentActivity() {
     /**
      * Create the custom zoom wheel view.
      *
+     * Optimized: All Paint objects are pre-allocated as fields (zero allocation in onDraw).
      * Draws / Vẽ:
      * - Vertical track line / Đường ray dọc
      * - Active track (green) / Phần track đã chọn (màu xanh)
      * - Thumb indicator (green circle with white dot) / Núm chỉ thị
      * - Tick marks at 10% intervals / Vạch chia tại mỗi 10%
-     *
-     * Touch handling: direct mapping of Y position to zoom level (0-1).
-     * Top of track = zoom 10x, Bottom of track = zoom 1x.
      */
     private fun createZoomWheel(): View {
         return object : View(this) {
+            // --- Pre-allocated Paints (zero GC in onDraw) ---
+            private val trackPaint = Paint().apply {
+                color = Color.argb(60, 255, 255, 255)
+                strokeWidth = 2f
+                isAntiAlias = true
+            }
+            private val activePaint = Paint().apply {
+                color = Color.parseColor("#00E676")
+                strokeWidth = 3f
+                isAntiAlias = true
+                strokeCap = Paint.Cap.ROUND
+            }
+            private val thumbPaint = Paint().apply {
+                color = Color.parseColor("#00E676")
+                isAntiAlias = true
+            }
+            private val innerPaint = Paint().apply {
+                color = Color.WHITE
+                isAntiAlias = true
+            }
+            private val tickPaint = Paint().apply {
+                color = Color.argb(40, 255, 255, 255)
+                strokeWidth = 1f
+                isAntiAlias = true
+            }
+
             override fun onDraw(canvas: Canvas) {
                 super.onDraw(canvas)
                 val w = width.toFloat()
@@ -442,43 +472,19 @@ class CameraScanActivity : FragmentActivity() {
                 // top (zoom=1) → y = h*0.15, bottom (zoom=0) → y = h*0.85
                 val indicatorY = h * 0.15f + (h * 0.7f) * (1f - currentZoom)
 
-                // Full track line (subtle white)
-                val trackPaint = Paint().apply {
-                    color = Color.argb(60, 255, 255, 255)
-                    strokeWidth = 2f
-                    isAntiAlias = true
-                }
+                // 1. Full track line (subtle white)
                 canvas.drawLine(midX, h * 0.15f, midX, h * 0.85f, trackPaint)
 
-                // Active track (green - from thumb to bottom)
-                val activePaint = Paint().apply {
-                    color = Color.parseColor("#00E676")
-                    strokeWidth = 3f
-                    isAntiAlias = true
-                    strokeCap = Paint.Cap.ROUND
-                }
+                // 2. Active track (green - from thumb to bottom)
                 canvas.drawLine(midX, indicatorY, midX, h * 0.85f, activePaint)
 
-                // Thumb outer circle (green)
-                val thumbPaint = Paint().apply {
-                    color = Color.parseColor("#00E676")
-                    isAntiAlias = true
-                }
+                // 3. Thumb outer circle (green)
                 canvas.drawCircle(midX, indicatorY, 14f, thumbPaint)
 
-                // Thumb inner circle (white dot)
-                val innerPaint = Paint().apply {
-                    color = Color.WHITE
-                    isAntiAlias = true
-                }
+                // 4. Thumb inner circle (white dot)
                 canvas.drawCircle(midX, indicatorY, 6f, innerPaint)
 
-                // Subtle tick marks at every 10% zoom
-                val tickPaint = Paint().apply {
-                    color = Color.argb(40, 255, 255, 255)
-                    strokeWidth = 1f
-                    isAntiAlias = true
-                }
+                // 5. Subtle tick marks at every 10% zoom
                 val tickCount = 10
                 val tickRange = h * 0.7f
                 for (i in 0..tickCount) {
@@ -490,7 +496,10 @@ class CameraScanActivity : FragmentActivity() {
             // Handle touch events: map finger Y position to zoom level
             // Xử lý cảm ứng: ánh xạ vị trí Y của ngón tay thành mức zoom
             setOnTouchListener { _, event ->
-                handleWheelTouch(event)
+                if (event.action == MotionEvent.ACTION_DOWN || event.action == MotionEvent.ACTION_MOVE) {
+                    val zoom = calcZoomFromY(event.y, height)
+                    setZoom(zoom)
+                }
                 true
             }
         }
@@ -498,23 +507,17 @@ class CameraScanActivity : FragmentActivity() {
 
     /**
      * Handle touch events on the zoom wheel.
-     *
-     * On ACTION_DOWN: Set zoom based on initial touch Y position.
-     * On ACTION_MOVE: Track finger movement to adjust zoom continuously.
+     * Optimized: removed unused lastWheelY tracking.
      *
      * Xử lý sự kiện chạm trên bánh xe zoom.
      */
     private fun handleWheelTouch(event: MotionEvent) {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                lastWheelY = event.y
                 val zoom = calcZoomFromY(event.y, zoomWheel.height)
                 setZoom(zoom)
             }
             MotionEvent.ACTION_MOVE -> {
-                // Track relative movement for smooth zoom adjustment
-                // Theo dõi chuyển động tương đối để điều chỉnh zoom mượt
-                lastWheelY = event.y
                 val zoom = calcZoomFromY(event.y, zoomWheel.height)
                 setZoom(zoom)
             }
@@ -685,6 +688,8 @@ class CameraScanActivity : FragmentActivity() {
     /**
      * Toggle the camera flash (torch mode) on/off.
      *
+     * Optimized: uses cached drawables instead of recreating Bitmaps each toggle.
+     *
      * Flow / Luồng xử lý:
      * 1. Check camera is ready / Kiểm tra camera sẵn sàng
      * 2. Check device has flash unit / Kiểm tra thiết bị có flash
@@ -708,8 +713,8 @@ class CameraScanActivity : FragmentActivity() {
         isFlashOn = !isFlashOn
         camera?.cameraControl?.enableTorch(isFlashOn)
 
-        // Update icon and animate
-        flashButton.setImageDrawable(createFlashDrawable(isFlashOn))
+        // Use cached drawable — no Bitmap allocation
+        flashButton.setImageDrawable(if (isFlashOn) flashOnDrawable else flashOffDrawable)
         flashButton.animate()
             .scaleX(1.3f).scaleY(1.3f).setDuration(100)
             .withEndAction {
@@ -887,6 +892,9 @@ class CameraScanActivity : FragmentActivity() {
                 )
                 .build()
         )
+
+        /** Analysis throttle interval in ms / Khoảng thời gian giữa các lần phân tích (ms) */
+        private val ANALYSIS_INTERVAL_MS = 150L
 
         /** Timestamp of last analysis for throttling / Mốc thời gian phân tích cuối */
         private var lastAnalysisTime = 0L
